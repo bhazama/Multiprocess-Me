@@ -5,38 +5,49 @@ import requests
 from multiprocessing import Process, Queue, current_process
 import time
 from bs4 import BeautifulSoup
+import csv
 
 loop = True
 domain_list = []
 task_queue = Queue()
 done_queue = Queue()
-num_workers = 4
+num_workers = 3
+filename = "output.txt"
+link_list = []
 
 # function that creates the menu interface
 def print_menu():
     print("="*10 + "MENU" + "="*10)
     print("1. Add a domain name")
-    print("2. Reset domain names")
-    print("3. Start processing queue")
-    print("4. Stop processing queue")
-    print("5. Display Logs")
-    print("6. Exit")
+    print("2. Set output file")
+    print("3. Reset domain names")
+    print("4. Start processing queue")
+    print("5. Stop processing queue")
+    print("6. Display Logs")
+    print("7. Exit")
     print("="*24)
-    
-#function that checks the queue process for stop string
-def check_process(list):
-    if list[0] == "STOP":
-        print("Stopping queue process...")
-        return
-    else:
-        print("ok!")
 
 def scraper(input,output):
     output.put("{} starting".format(current_process().name))
+    file = open(filename, "a")
     for domain in iter(input.get, "STOP"):
+        slash_domain = domain + "/"
         result = requests.get(domain)
-        output.put("{}: Domain {} retrieved with {} bytes".format(current_process().name, domain, len(result.text)))
-
+        soup = BeautifulSoup(result.text, "html.parser")
+        file.write("\nSOURCE URL: " + domain +"\n")
+        for link in soup.find_all("link"):
+            url_link = link.get("href")
+            
+            if domain == url_link or slash_domain == url_link:
+                pass
+                print("PASS")
+            elif url_link not in link_list:
+                link_list.append(url_link)
+                output.put(current_process().name + ": " + url_link)
+                file.write("-"+url_link +"\n")
+            else:
+                pass
+        
 def main():
     try: 
         global loop
@@ -48,17 +59,19 @@ def main():
             if choice == 1:
                 print("*Add a domain name has been selected*")
                 domain_name = input("What is the domain name to be added? ")
+                domain_name = "www.{}".format(domain_name)
                 domain_list.append(domain_name)
-                #print(domain_list)
             
             elif choice == 2:
+                global filename
+                filename = input("Enter output filename: ")
+
+            elif choice == 3:
                 print("\nResetting domain names...\n")
                 del domain_list[:]
-                #print(domain_list)
                
-            elif choice == 3:
+            elif choice == 4:
                 print("\nQueue now processing...\n")
-                #create queues
                 
                 if len(domain_list) == 0:
                     print("No items to be processed. Add a domain name first")
@@ -77,28 +90,23 @@ def main():
                     del domain_list[:]
                    
             
-            elif choice == 4:
-                if process.is_alive() == True:
-                    for x in range(num_workers):
-                        process.terminate()
-                    print("Processes have been terminated")
-                else:
-                    print("No processes currently running.")
-            
             elif choice == 5:
+                print(process.is_alive())
+                for i in range(num_workers):
+                    process.terminate()
+                print(process.is_alive())
+            
+            elif choice == 6:
                 print("="*13 + "\n DISPLAY LOG\n" + "="*13)
                 
                 for message in iter(done_queue.get, "STOP"):
-                    print(message)
-                    time.sleep(2)
-                process.terminate()
-                print_menu()
-                       
-                #print("="*5 + "IN QUEUE:" + "="*5)
-                #for name in queue_list:
-                 #   print(name)
-            
-            elif choice == 6:
+                    try:
+                        print(message)
+                        time.sleep(2)
+                    except KeyboardInterrupt:
+                        break
+
+            elif choice == 7:
                 print("*Exiting...*")
                 sys.exit()
             
@@ -108,10 +116,6 @@ def main():
     except KeyboardInterrupt:
         print("Exiting....")
         sys.exit()
-
-
-
-
 
 
 if __name__ == "__main__":
