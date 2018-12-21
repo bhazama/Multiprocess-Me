@@ -81,7 +81,6 @@ def main():
                         name = "https://{}".format(name)
                         task_queue.put(name)
                         
-                    # ADD CODE FOR WEB CRAWLER FUNCTIONALITY HERE
                    
                     for i in range(num_workers):
                         process = Process(target=scraper, args=(task_queue,done_queue))
@@ -102,7 +101,7 @@ def main():
                 for message in iter(done_queue.get, "STOP"):
                     try:
                         print(message)
-                        time.sleep(2)
+                        #time.sleep(2)
                     except KeyboardInterrupt:
                         break
 
